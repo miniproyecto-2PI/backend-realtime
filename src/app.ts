@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import healthRoutes from './routes/health.routes';
 import { env } from './config/env';
+import { errorHandler } from './middlewares/errorHandler';
 
 export function createExpressApp(): Application {
   const app = express();
@@ -30,12 +31,26 @@ export function createExpressApp(): Application {
       service: 'Salón de Estudio - Backend Realtime',
       status: 'active',
       technology: 'Node.js + TypeScript + Socket.IO',
+      standards: 'TS-05: Contrato API y Errores Estándar',
       health: '/health',
       sprint: 'Sprint 0: Base Técnica End-to-End',
       timestamp: new Date().toISOString(),
     });
   });
 
+  // Manejo de 404 bajo estándar TS-05
+  app.use((req: Request, res: Response) => {
+    res.status(404).json({
+      error: {
+        code: 'NOT_FOUND',
+        message: `La ruta '${req.method} ${req.originalUrl}' no existe en el servidor de tiempo real.`,
+        fields: null,
+      },
+    });
+  });
+
+  // Middleware global de errores
+  app.use(errorHandler);
+
   return app;
 }
-
