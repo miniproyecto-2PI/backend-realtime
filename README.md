@@ -84,3 +84,4 @@ docker run -p 4000:4000 -e PORT=4000 --name salon-estudio-realtime backend-realt
    - `NODE_ENV`: `production`
    - `PORT`: `10000` *(Render lo asigna)*
    - `CORS_ORIGIN`: `*` *(o el dominio de Vercel del Frontend)*
+
