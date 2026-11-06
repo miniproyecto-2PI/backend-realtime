@@ -19,3 +19,4 @@ router.get('/', (_req: Request, res: Response) => {
 });
 
 export default router;
+
