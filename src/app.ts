@@ -13,7 +13,13 @@ export function createExpressApp(): Application {
   const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim());
   app.use(
     cors({
-      origin: allowedOrigins.includes('*') ? '*' : allowedOrigins,
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        return callback(null, true);
+      },
       credentials: true,
       methods: ['GET', 'POST', 'OPTIONS'],
     })
