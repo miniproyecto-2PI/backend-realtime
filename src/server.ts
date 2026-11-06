@@ -25,6 +25,7 @@ httpServer.listen(env.PORT, env.HOST, () => {
   console.log('========================================================');
   console.log(`⚡ Servidor Backend Realtime (Socket.IO) iniciado`);
   console.log(`📡 URL Base:      http://${env.HOST}:${env.PORT}`);
+  console.log(`📚 Swagger UI:    http://${env.HOST}:${env.PORT}/api/docs`);
   console.log(`🩺 Health Check:  http://${env.HOST}:${env.PORT}/health`);
   console.log(`🌍 Entorno:       ${env.NODE_ENV}`);
   console.log('========================================================');
@@ -43,4 +44,3 @@ const shutdown = (signal: string) => {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
-
