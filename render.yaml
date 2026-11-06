@@ -1,0 +1,18 @@
+# ==============================================================================
+# Render Blueprint Specification (Backend Realtime)
+# ==============================================================================
+services:
+  - type: web
+    name: salon-estudio-backend-realtime
+    runtime: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: CORS_ORIGIN
+        value: "*"
