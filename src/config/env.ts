@@ -14,3 +14,4 @@ export const env = {
   HOST: process.env.HOST || '0.0.0.0',
   CORS_ORIGIN: process.env.CORS_ORIGIN || '*',
 };
+

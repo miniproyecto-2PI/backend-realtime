@@ -38,3 +38,4 @@ export function createExpressApp(): Application {
 
   return app;
 }
+

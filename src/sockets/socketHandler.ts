@@ -27,3 +27,4 @@ export function initSocketHandlers(io: SocketIOServer): void {
 export function getActiveClientsCount(): number {
   return ioInstance ? ioInstance.engine.clientsCount : 0;
 }
+
