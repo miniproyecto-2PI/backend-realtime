@@ -17,4 +17,7 @@ services:
       # URL(s) del frontend en Vercel, separadas por coma. Se configura en el panel de Render.
       - key: CORS_ORIGIN
         sync: false
+      # JSON de la cuenta de servicio de Firebase (mismo proyecto que el Backend API).
+      - key: FIREBASE_SERVICE_ACCOUNT_KEY
+        sync: false
 
