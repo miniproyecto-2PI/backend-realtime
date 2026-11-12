@@ -3,15 +3,21 @@ import { Server as SocketIOServer } from 'socket.io';
 import { createExpressApp } from './app';
 import { initSocketHandlers } from './sockets/socketHandler';
 import { env } from './config/env';
+import { isListedOrigin, parseAllowedOrigins } from './config/cors';
 
 const app = createExpressApp();
 const httpServer = http.createServer(app);
 
-// Inicializar Socket.IO sobre el servidor HTTP
-const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim());
+// Inicializar Socket.IO sobre el servidor HTTP con la misma lista de orígenes que Express
+const allowedOrigins = parseAllowedOrigins(env.CORS_ORIGIN);
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: allowedOrigins.includes('*') ? '*' : allowedOrigins,
+    origin: (origin, callback) => {
+      // Sin Origin: clientes no navegador (pruebas, herramientas). Con Origin: debe estar en la lista.
+      if (!origin || isListedOrigin(origin, allowedOrigins)) return callback(null, true);
+      console.warn(`[CORS] Conexión Socket.IO bloqueada desde origen no permitido: ${origin}`);
+      return callback(null, false);
+    },
     methods: ['GET', 'POST'],
     credentials: true,
   },

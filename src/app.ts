@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 import healthRoutes from './routes/health.routes';
 import { env } from './config/env';
+import { createCorsDelegate, parseAllowedOrigins } from './config/cors';
 import { swaggerSpec } from './docs/swagger';
 import { errorHandler } from './middlewares/errorHandler';
 
@@ -17,21 +18,11 @@ export function createExpressApp(): Application {
     })
   );
 
-  // Configuración de CORS dinámico
-  const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim());
-  app.use(
-    cors({
-      origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
-          return callback(null, true);
-        }
-        return callback(null, true);
-      },
-      credentials: true,
-      methods: ['GET', 'POST', 'OPTIONS'],
-    })
-  );
+  // Render termina TLS antes de Express: confiar en el primer proxy (req.protocol = https)
+  app.set('trust proxy', 1);
+
+  // CORS restringido a los orígenes de CORS_ORIGIN (ver config/cors.ts)
+  app.use(cors(createCorsDelegate(parseAllowedOrigins(env.CORS_ORIGIN))));
 
   app.use(express.json());
 
