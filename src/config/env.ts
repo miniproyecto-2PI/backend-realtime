@@ -14,5 +14,14 @@ export const env = {
   HOST: process.env.HOST || '0.0.0.0',
   // Lista separada por comas. '*' no se acepta (ver config/cors.ts).
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:8080',
+  // Mismo proyecto de Firebase que el Backend API: verifica los ID tokens del handshake.
+  FIREBASE: {
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    serviceAccountKey: process.env.FIREBASE_SERVICE_ACCOUNT_KEY,
+    serviceAccountPath:
+      process.env.FIREBASE_SERVICE_ACCOUNT_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS,
+    authEmulatorHost: process.env.FIREBASE_AUTH_EMULATOR_HOST,
+  },
 };
-

@@ -1,5 +1,8 @@
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { ErrorPayload } from '../types/errors.types';
+import { SocketData } from '../types/auth.types';
+
+// Catálogo de eventos: docs/EVENTOS_TIEMPO_REAL.md
 
 let ioInstance: SocketIOServer | null = null;
 
@@ -14,32 +17,27 @@ export function createSocketError(
   message: string,
   fields: Record<string, string> | null = null
 ): SocketAckResponse {
-  return {
-    ok: false,
-    error: {
-      code,
-      message,
-      fields,
-    },
-  };
+  return { ok: false, error: { code, message, fields } };
 }
 
 export function createSocketSuccess<T>(data: T): SocketAckResponse<T> {
-  return {
-    ok: true,
-    data,
-  };
+  return { ok: true, data };
 }
 
+/**
+ * Registra los eventos. Toda conexión que llega aquí ya pasó por el middleware de
+ * autenticación del handshake: socket.data.user siempre existe.
+ */
 export function initSocketHandlers(io: SocketIOServer): void {
   ioInstance = io;
 
   io.on('connection', (socket: Socket) => {
-    console.log(`[Socket.IO] Cliente conectado: ${socket.id} (Total: ${io.engine.clientsCount})`);
+    const { uid } = (socket.data as SocketData).user;
+    console.log(`[Socket.IO] Cliente conectado: ${socket.id} uid=${uid} (Total: ${io.engine.clientsCount})`);
 
     // Evento ping con respuesta estándar
-    socket.on('ping', (callback) => {
-      const response = createSocketSuccess({ serverTime: new Date().toISOString() });
+    socket.on('ping', (callback?: (response: SocketAckResponse) => void) => {
+      const response = createSocketSuccess({ serverTime: new Date().toISOString(), uid });
       if (typeof callback === 'function') {
         callback(response);
       } else {
@@ -47,28 +45,25 @@ export function initSocketHandlers(io: SocketIOServer): void {
       }
     });
 
-    // Ejemplo de evento de unión a sala validando errores según TS-05
-    socket.on('join-room', (roomId: string, callback) => {
-      if (!roomId || typeof roomId !== 'string' || roomId.trim().length === 0) {
-        const errorResp = createSocketError(
-          'VALIDATION_ERROR',
-          'El identificador de sala es obligatorio.',
-          { roomId: 'Debe proporcionar un ID de sala válido.' }
+    // Unión a sala (base de TS-02; la validación contra Firestore llega en el Sprint 2)
+    socket.on('join-room', (roomId: unknown, callback?: (response: SocketAckResponse) => void) => {
+      if (typeof roomId !== 'string' || roomId.trim().length === 0) {
+        callback?.(
+          createSocketError('VALIDATION_ERROR', 'El identificador de sala es obligatorio.', {
+            roomId: 'Debe proporcionar un ID de sala válido.',
+          })
         );
-        if (typeof callback === 'function') callback(errorResp);
         return;
       }
 
-      socket.join(roomId);
-      console.log(`[Socket.IO] Cliente ${socket.id} se unió a sala: ${roomId}`);
-      if (typeof callback === 'function') {
-        callback(createSocketSuccess({ roomId, joined: true }));
-      }
+      const id = roomId.trim();
+      socket.join(id);
+      console.log(`[Socket.IO] uid=${uid} (${socket.id}) se unió a la sala: ${id}`);
+      callback?.(createSocketSuccess({ roomId: id, joined: true }));
     });
 
-    // Evento de desconexión
     socket.on('disconnect', (reason) => {
-      console.log(`[Socket.IO] Cliente desconectado: ${socket.id} (Razón: ${reason})`);
+      console.log(`[Socket.IO] Cliente desconectado: ${socket.id} uid=${uid} (Razón: ${reason})`);
     });
   });
 }
