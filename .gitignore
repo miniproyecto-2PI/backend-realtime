@@ -11,6 +11,13 @@ build/
 .env.*
 !*.env.example
 
+# Credenciales y llaves de Firebase / Google Cloud
+*serviceAccountKey*.json
+*firebase-adminsdk*.json
+credentials.json
+*.pem
+*.key
+
 # Logs
 logs/
 *.log
