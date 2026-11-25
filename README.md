@@ -164,3 +164,9 @@ Las pruebas no usan Firebase: inyectan un verificador de tokens en memoria ([tes
 | HTTP | `{ "error": { "code", "message", "fields" } }` |
 | Ack de eventos | `{ "ok": false, "error": { "code", "message", "fields" } }` · éxito: `{ "ok": true, "data": { … } }` |
 | Handshake rechazado | `connect_error` con `err.data = { code: 'UNAUTHENTICATED' \| 'SERVICE_UNAVAILABLE', message, fields: null }` |
+
+## TS-08 · Verificar los usuarios de demostración
+
+Con Auth y Firestore Emulator iniciados y `npm run seed:reset` ejecutado en BackEnd, configura este servicio con el proyecto `demo-estudiemos`, `FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099` y `FIRESTORE_EMULATOR_HOST=127.0.0.1:8085`. En el `.env` local configura las mismas variables `SEED_A_EMAIL`, `SEED_A_PASSWORD`, `SEED_B_EMAIL`, `SEED_B_PASSWORD`, `SEED_C_EMAIL` y `SEED_C_PASSWORD` de la API.
+
+Ejecuta `npm ci` y `npm run dev`. Desde otra terminal de este repositorio ejecuta **`npm run seed:verify`** con las salas libres. La verificación inicia sesión contra el emulador para cada usuario, une A y B a DEMB3333 y C a DEMA2222, comprueba los participantes y cierra los sockets. Puedes usar DEMC4444 para probar el historial de 120 mensajes mediante la API.

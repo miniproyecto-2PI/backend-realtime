@@ -4,6 +4,7 @@
   "description": "Servidor de Tiempo Real (WebSockets y WebRTC Signaling) para Salón de Estudio Colaborativo - MiniProyecto 2",
   "main": "dist/server.js",
   "scripts": {
+    "seed:verify": "tsx scripts/verify-seed.ts",
     "build": "rimraf dist && tsc",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
