@@ -3,6 +3,46 @@
 | Versión | Fecha | Sprint | Cambios |
 |---|---|---|---|
 | 0.1 | 2026-11-11 | Sprint 1 | Handshake autenticado con Firebase, `ping`, `join-room`, `disconnect` |
+| 0.2 | 2026-11-25 | Sprint 3 | Ingreso, presencia por usuario, recuperación de la sala, edición, eliminación y chat persistido |
+
+### TS-09 · Contrato de presencia y reconexión
+
+| Evento | Emisor | Destinatario | Datos y efecto |
+|---|---|---|---|
+| `room:join` (alias `join-room`) | Cliente | Servidor | ID o `{ roomId }`. Confirma el ingreso con ack después de validar la sala. |
+| `room:participants` | Servidor | Socket que ingresa o vuelve | `{ roomId, participants: [{ uid, name, avatar }] }`. Reemplaza la lista local. |
+| `room:user-joined` | Servidor | Otros sockets de la sala | `{ roomId, participant: { uid, name, avatar } }` al entrar la primera conexión del usuario. |
+| `room:user-left` | Servidor | Otros sockets de la sala | Mismo formato al salir la última conexión del usuario por desconexión o cambio de sala. |
+| `room:updated` | Servidor | Sala | `{ roomId, name }`. Actualiza el nombre. |
+| `room:deleted` | Servidor | Sala o socket que intenta volver | `{ roomId }`. Mostrar aviso, descartar la sala activa y volver al dashboard. |
+| `room:error` | Servidor | Sala afectada o socket que intenta volver | `{ roomId, code }`. En caso de error al observar o recuperar la sala, permitir reintentar. |
+| `chat:send` | Cliente unido | Servidor | `{ roomId, text, clientMessageId? }`. Ack con ID persistido o error. |
+| `chat:message` | Servidor | Sala, incluido el emisor | `{ id, roomId, text, author, createdAt }`. Autor con UID, nombre y avatar; hora ISO UTC. |
+
+Para que el cliente vuelva automáticamente a la sala, incluir su ID actual junto al token en
+la función `auth` de Socket.IO. En cada handshake el backend vuelve a verificar la sesión, la
+existencia de la sala y el perfil. Este modo reemplaza el envío explícito de `room:join` en
+el callback de conexión. Al cambiar de sala, actualizar el ID que lee la función `auth`.
+Si la pantalla ya usa `room:join` en cada `connect`, puede conservar ese flujo.
+
+```ts
+const socket = io(url, {
+  autoConnect: false,
+  reconnection: true,
+  auth: async cb => cb({ token: await obtenerIdToken(), roomId: salaActual() }),
+});
+socket.on('room:participants', ({ participants }) => reemplazarParticipantes(participants));
+socket.on('room:deleted', () => volverAlDashboard());
+socket.connect();
+```
+
+**Verificación:** abrir dos usuarios en la misma sala, interrumpir el transporte de uno
+y restablecer la red. El otro recibe la salida y el nuevo ingreso. El cliente recuperado
+recibe el listado actual sin duplicados. Con dos pestañas del mismo usuario se anuncia su
+salida solo al cerrar la última. Si se eliminó la sala mientras estaba desconectado,
+el intento automático recibe `room:deleted`. Las pruebas están en `tests/reconnect.test.ts`
+y `tests/presence.test.ts`. Los eventos de video y estados de los siguientes sprints
+se versionarán aquí cuando se implemente su contrato.
 
 Este documento es la fuente única para nombres de eventos, quién los emite y qué datos llevan. El frontend y el backend-realtime **deben** usar exactamente estos nombres. Cada evento nuevo de los sprints 2 a 5 (chat, presencia, WebRTC, estados de media) se agrega aquí antes de programarlo (TS-09).
 

@@ -91,7 +91,11 @@ export function initSocketHandlers(io: SocketIOServer, observe: WatchRoom = watc
       try {
         person = await lookup(id, (socket.data as SocketData).user);
       } catch {
-        callback?.(createSocketError('DATABASE_ERROR', 'No pudimos consultar la sala.'));
+        if (socket.connected && sequence === attempt) {
+          callback?.(createSocketError('DATABASE_ERROR', 'No pudimos consultar la sala.'));
+        } else {
+          callback?.(createSocketError('JOIN_CANCELLED', 'La solicitud de ingreso fue reemplazada.'));
+        }
         return;
       }
       if (!socket.connected || sequence !== attempt) {
@@ -140,6 +144,18 @@ export function initSocketHandlers(io: SocketIOServer, observe: WatchRoom = watc
     };
     socket.on('room:join', join);
     socket.on('join-room', join);
+    const requestedRoom: unknown = socket.handshake.auth.roomId;
+    if (requestedRoom !== undefined) {
+      const roomId = typeof requestedRoom === 'string' ? requestedRoom.trim() : '';
+      void join(roomId, ({ error }) => {
+        if (!error || !socket.connected || error.code === 'JOIN_CANCELLED') return;
+        if (error.code === 'ROOM_NOT_FOUND') {
+          socket.emit('room:deleted', { roomId });
+        } else {
+          socket.emit('room:error', { roomId, code: error.code });
+        }
+      });
+    }
     socket.on('chat:send', async (payload: unknown, ack?: (response: SocketAckResponse) => void) => {
       const reply = typeof ack === 'function' ? ack : undefined;
       try {
