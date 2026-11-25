@@ -8,10 +8,12 @@ import { createSocketAuthMiddleware } from './sockets/authMiddleware';
 import { initSocketHandlers } from './sockets/socketHandler';
 import { FirebaseTokenVerifier, TokenVerifier } from './services/token.verifier';
 import { WatchRoom } from './services/room.watch';
+import { LookupEntry } from './services/room.entry';
 
 export interface RealtimeDeps {
   tokenVerifier: TokenVerifier;
   watchRoom: WatchRoom;
+  lookupEntry: LookupEntry;
 }
 
 export interface RealtimeServer {
@@ -49,7 +51,7 @@ export function createRealtimeServer(overrides: Partial<RealtimeDeps> = {}): Rea
 
   // TS-02: toda conexión exige un ID token de Firebase válido en el handshake
   io.use(createSocketAuthMiddleware(tokenVerifier));
-  initSocketHandlers(io, overrides.watchRoom);
+  initSocketHandlers(io, overrides.watchRoom, overrides.lookupEntry);
 
   return { app, httpServer, io };
 }
