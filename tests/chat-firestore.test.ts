@@ -18,6 +18,13 @@ it.skipIf(!process.env.FIRESTORE_EMULATOR_HOST)('persiste una sola copia tras re
     expect(snapshot.size).toBe(1);
     expect(snapshot.docs[0].data()).toMatchObject({ author, text: 'Hola', id: results[0].id });
     expect(snapshot.docs[0].get('createdAt').toDate()).toBeInstanceOf(Date);
+    // US-11: una recarga vía REST y el evento en vivo deben identificar el mismo mensaje.
+    const doc = snapshot.docs[0];
+    const persisted = doc.data();
+    expect(results.find(result => result.message)?.message).toEqual({
+      id: doc.id, roomId: room.id, author: persisted.author, text: persisted.text,
+      createdAt: persisted.createdAt.toDate().toISOString(),
+    });
     await expect(saveMessage({ ...input, text: 'Otro' }, author)).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
     await room.update({ deleting: true });
     await expect(saveMessage(input, author)).rejects.toMatchObject({ code: 'ROOM_NOT_FOUND' });

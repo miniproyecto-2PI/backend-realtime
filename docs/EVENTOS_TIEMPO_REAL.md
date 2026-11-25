@@ -146,3 +146,10 @@ socket.timeout(5000).emit('chat:send', draft, (timeout, ack) => {
   console.log('Guardado', ack.data.id);
 });
 ```
+
+## US-11 · Integración del historial y del chat en vivo
+
+1. Registrar el listener de `chat:message` antes de solicitar `room:join`. Tras el ack de ingreso, pedir `GET /api/rooms/{id}/messages` a la API REST con el token de sesión. Conservar los eventos de la sala recibidos mientras llega la respuesta.
+2. Leer `data.messages`, ya en orden cronológico. Cada entrada comparte con `chat:message` los campos `id`, `roomId`, `author`, `text` y `createdAt`. Combinar por ID dentro de la sala, incluyendo el mensaje propio. Para fechas iguales, respetar el orden por ID del historial.
+3. Si `data.hasMore` es verdadero, usar `data.nextBefore` en `?before=...` para pedir la página anterior e insertarla al principio conservando la posición de lectura. El límite por defecto y máximo es 50.
+4. Al cambiar de sala, descartar las respuestas pendientes de la sala anterior. Si falla la consulta, mantener activa la suscripción y permitir reintentar el cursor. Al reconectar, volver a unirse y reconciliar desde la página más reciente; si hicieron falta más de 50 mensajes, seguir paginando hasta encontrar un ID conocido o agotar el historial.
