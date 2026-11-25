@@ -4,6 +4,7 @@ import { createRealtimeServer, RealtimeServer } from '../src/realtime';
 import { TokenVerifier } from '../src/services/token.verifier';
 import { WatchRoom } from '../src/services/room.watch';
 import { LookupEntry } from '../src/services/room.entry';
+import type { saveMessage } from '../src/services/chat.service';
 import { AuthUser } from '../src/types/auth.types';
 import { UnauthenticatedError } from '../src/types/errors.types';
 
@@ -36,8 +37,8 @@ export interface TestServer extends RealtimeServer {
 const testEntry: LookupEntry = async (id, user) => id === 'ZZZZZZZZ' ? null :
   { uid: user.uid, name: user.name ?? 'Participante', avatar: user.picture };
 
-export async function startTestServer(verifier: TokenVerifier = new FakeTokenVerifier(), watchRoom: WatchRoom = () => () => {}): Promise<TestServer> {
-  const server = createRealtimeServer({ tokenVerifier: verifier, watchRoom, lookupEntry: testEntry });
+export async function startTestServer(verifier: TokenVerifier = new FakeTokenVerifier(), watchRoom: WatchRoom = () => () => {}, persist?: typeof saveMessage): Promise<TestServer> {
+  const server = createRealtimeServer({ tokenVerifier: verifier, watchRoom, lookupEntry: testEntry, saveMessage: persist });
   await new Promise<void>((resolve) => server.httpServer.listen(0, '127.0.0.1', resolve));
   const { port } = server.httpServer.address() as AddressInfo;
 

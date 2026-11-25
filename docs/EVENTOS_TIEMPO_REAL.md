@@ -109,7 +109,6 @@ Nombres propuestos por el backlog. Se confirman aquí cuando se programan.
 
 | Evento | Sprint | Historia |
 |---|---|---|
-| Envío y recepción de mensajes de chat | 3 | US-10, US-11 |
 | Señalización WebRTC (oferta/respuesta SDP, candidatos ICE) | 4 | TS-03, US-12 |
 | Estados de media (micrófono, cámara, pantalla) | 5 | US-13, US-14 |
 
@@ -124,3 +123,26 @@ a los sockets autenticados que usaron `join-room` para esa sala.
 | `room:updated` | `{ roomId, name }` | Mostrar el nombre persistido. Se envía al abrir el observador y cuando cambia el nombre. |
 | `room:deleted` | `{ roomId }` | Mostrar «El anfitrión eliminó la sala» y volver al dashboard. El servidor retira a los clientes del canal después de emitir. |
 | `room:error` | `{ roomId, code: 'DATABASE_ERROR' }` | Mostrar un error y permitir reintentar con `join-room` después de cerrar el observador. |
+
+## US-10 · Mensajería instantánea
+
+| Evento | Quién lo emite | Quién lo recibe | Datos |
+|---|---|---|---|
+| `chat:send` | Cliente autenticado y unido con `room:join` | Servidor | `{ roomId, text, clientMessageId? }` |
+| `chat:message` | Servidor tras confirmar la escritura | Todos los sockets de la sala, incluido el emisor | `{ id, roomId, text, author: { uid, name, avatar }, createdAt }` |
+
+El texto admite de 1 a 1000 puntos de código Unicode tras recortar espacios en los extremos. Conserva los saltos de línea interiores. El servidor obtiene el autor de la sesión y persiste su hora en Firestore como Timestamp en `rooms/{roomId}/messages/{id}`. El evento entrega la hora en formato ISO UTC.
+
+El ack exitoso contiene `{ ok: true, data: { id } }`. La interfaz puede reconciliar el mensaje pendiente con el evento usando ese ID. Para reintentar un envío sin confirmación, reutilizar el mismo `clientMessageId` (por ejemplo, un UUID creado al redactar). En la misma sala y para el mismo autor, repetir el ID y texto devuelve el ID guardado sin volver a emitir; reutilizarlo con otro texto devuelve un error.
+
+Los errores usan `{ ok: false, error: { code, message, fields } }`. Los códigos son `VALIDATION_ERROR` para datos inválidos, `FORBIDDEN` si el socket no pertenece al canal, `ROOM_NOT_FOUND` si la sala desapareció o está en eliminación y `DATABASE_ERROR` si falla la persistencia. Un handshake sin sesión ya se rechaza con `connect_error`.
+
+```js
+// Ejecutar después del ack exitoso de room:join.
+socket.on('chat:message', message => console.log(message.author.name, message.text));
+const draft = { roomId, text: 'Hola, grupo', clientMessageId: crypto.randomUUID() };
+socket.timeout(5000).emit('chat:send', draft, (timeout, ack) => {
+  if (timeout || !ack.ok) return console.log('Pendiente de reintento', draft);
+  console.log('Guardado', ack.data.id);
+});
+```
