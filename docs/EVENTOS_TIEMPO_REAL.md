@@ -78,28 +78,28 @@ Todo evento que acepta callback responde con el mismo formato (TS-05):
 socket.emit('ping', (res) => console.log(res.data.serverTime));
 ```
 
-### `join-room`
+### `room:join` y presencia (US-08)
 
-| | |
-|---|---|
-| Emite | Cliente |
-| Datos | `roomId: string` (no vacío) |
-| Ack éxito | `{ ok: true, data: { roomId, joined: true } }` |
-| Ack error | `{ ok: false, error: { code: 'VALIDATION_ERROR', message: 'El identificador de sala es obligatorio.', fields: { roomId: '…' } } }` |
-| Estado | El ack confirma la suscripción al canal. Si el documento ya no existe, el cliente recibe `room:deleted`. |
+El cliente autenticado envía `{ roomId }`. También se admite el ID como cadena y el alias anterior `join-room`. El servidor recorta espacios y comprueba en Firestore que la sala exista y admita ingresos. Un intento fallido conserva la sala anterior.
+
+| Evento | Destinatario | Datos |
+|---|---|---|
+| `room:participants` | Socket que ingresa | `{ roomId, participants: [{ uid, name, avatar }] }` |
+| `room:user-joined` | Otros sockets de la sala | `{ roomId, participant: { uid, name, avatar } }` al entrar la primera conexión del usuario |
+| `room:user-left` | Otros sockets de la sala | El mismo formato al salir la última conexión del usuario, por desconexión o cambio de sala |
+
+El ack de ingreso tiene el formato `{ ok: true, data: { roomId, joined: true } }`. Los errores usan `{ ok: false, error: { code, message, fields } }`. Un ID inválido devuelve `VALIDATION_ERROR`, uno inexistente o en eliminación devuelve `ROOM_NOT_FOUND` y una consulta fallida devuelve `DATABASE_ERROR`.
+
+En la vista de sala, registrar los listeners de presencia antes de conectar. El cliente conserva el ID de la ruta y solicita el ingreso en cada conexión, incluida la reconexión. Debe reemplazar su lista local al recibir `room:participants`. Ejemplo con un socket creado con `autoConnect: false` y el token de la sesión:
 
 ```ts
-socket.emit('join-room', 'ABCD234567', (res) => {
-  if (!res.ok) return mostrarError(res.error.message);
+socket.on('connect', () => {
+  socket.emit('room:join', { roomId }, (res) => {
+    if (!res.ok) mostrarError(res.error.message);
+  });
 });
+socket.connect();
 ```
-
-### `disconnect`
-
-| | |
-|---|---|
-| Emite | Socket.IO (automático) |
-| Uso | El servidor registra la salida en el log. En el Sprint 3 (TS-09) se emitirá `room:user-left` a la sala |
 
 ---
 
@@ -109,7 +109,6 @@ Nombres propuestos por el backlog. Se confirman aquí cuando se programan.
 
 | Evento | Sprint | Historia |
 |---|---|---|
-| `room:participants`, `room:user-joined`, `room:user-left` | 3 | TS-09, US-08 |
 | Envío y recepción de mensajes de chat | 3 | US-10, US-11 |
 | Señalización WebRTC (oferta/respuesta SDP, candidatos ICE) | 4 | TS-03, US-12 |
 | Estados de media (micrófono, cámara, pantalla) | 5 | US-13, US-14 |

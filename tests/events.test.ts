@@ -62,11 +62,11 @@ describe('Eventos Socket.IO', () => {
   });
 
   it('join-room une el socket a la sala', async () => {
-    const res = await client.timeout(2000).emitWithAck('join-room', '  ABCD234567 ');
-    expect(res).toEqual({ ok: true, data: { roomId: 'ABCD234567', joined: true } });
+    const res = await client.timeout(2000).emitWithAck('join-room', '  ABCD2345 ');
+    expect(res).toEqual({ ok: true, data: { roomId: 'ABCD2345', joined: true } });
 
     const [serverSocket] = await server.io.fetchSockets();
-    expect(serverSocket.rooms.has('room:ABCD234567')).toBe(true);
+    expect(serverSocket.rooms.has('room:ABCD2345')).toBe(true);
   });
 
   it.each([[''], ['   '], [123], [null]])('join-room rechaza un roomId inválido (%j) con VALIDATION_ERROR', async (roomId) => {
@@ -76,7 +76,7 @@ describe('Eventos Socket.IO', () => {
       error: {
         code: 'VALIDATION_ERROR',
         message: 'El identificador de sala es obligatorio.',
-        fields: { roomId: 'Debe proporcionar un ID de sala válido.' },
+        fields: { roomId: 'Escribe el ID de 8 caracteres de la sala.' },
       },
     });
   });

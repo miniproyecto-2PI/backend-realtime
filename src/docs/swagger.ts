@@ -61,11 +61,11 @@ socket.on('connect_error', (err) => console.log(err.data?.code, err.data?.messag
 Sin token, o con un token inválido o vencido, la conexión se rechaza y el cliente recibe \`connect_error\` con
 \`err.data = { code: 'UNAUTHENTICATED', message, fields: null }\` (o \`SERVICE_UNAVAILABLE\` si Firebase no responde).
 
-### Eventos disponibles (v0.1)
+### Eventos disponibles
 | Evento | Emite | Datos | Ack |
 |---|---|---|---|
 | \`ping\` | cliente | — | \`{ ok: true, data: { serverTime, uid } }\` |
-| \`join-room\` | cliente | \`roomId: string\` | \`{ ok: true, data: { roomId, joined } }\` o \`VALIDATION_ERROR\` |
+| \`room:join\` (alias \`join-room\`) | cliente | \`roomId: string\` | \`{ ok: true, data: { roomId, joined } }\` o error de validación, sala inexistente o base de datos |
 
 Catálogo completo: **docs/EVENTOS_TIEMPO_REAL.md** en el repositorio.
 
