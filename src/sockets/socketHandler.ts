@@ -1,5 +1,6 @@
 import { Server as SocketIOServer, Socket } from 'socket.io';
-import { ErrorPayload } from '../types/errors.types';
+import { AppError, ErrorPayload } from '../types/errors.types';
+import { parseChatInput, saveMessage } from '../services/chat.service';
 import { SocketData } from '../types/auth.types';
 import { WatchRoom, watchRoom } from '../services/room.watch';
 import { LookupEntry, lookupEntry, Participant } from '../services/room.entry';
@@ -30,11 +31,12 @@ export function createSocketSuccess<T>(data: T): SocketAckResponse<T> {
  * Registra los eventos. Toda conexión que llega aquí ya pasó por el middleware de
  * autenticación del handshake: socket.data.user siempre existe.
  */
-export function initSocketHandlers(io: SocketIOServer, observe: WatchRoom = watchRoom, lookup: LookupEntry = lookupEntry): void {
+export function initSocketHandlers(io: SocketIOServer, observe: WatchRoom = watchRoom, lookup: LookupEntry = lookupEntry, persist = saveMessage): void {
   ioInstance = io;
 
   // Un observador por canal ocupado. Socket.IO elimina el canal al salir el último socket.
   const observers = new Map<string, () => void>();
+  const pendingChat = new Map<string, Promise<void>>();
   function participants(channel: string, exclude?: string) {
     const users = new Map<string, Participant>();
     for (const socketId of io.of('/').adapter.rooms.get(channel) ?? []) {
@@ -138,6 +140,36 @@ export function initSocketHandlers(io: SocketIOServer, observe: WatchRoom = watc
     };
     socket.on('room:join', join);
     socket.on('join-room', join);
+    socket.on('chat:send', async (payload: unknown, ack?: (response: SocketAckResponse) => void) => {
+      const reply = typeof ack === 'function' ? ack : undefined;
+      try {
+        const input = parseChatInput(payload);
+        const channel = 'room:' + input.roomId;
+        const author: Participant | undefined = socket.data.participant;
+        if (!author || author.uid !== uid || !socket.rooms.has(channel)) {
+          reply?.(createSocketError('FORBIDDEN', 'Únete a la sala antes de enviar mensajes.'));
+          return;
+        }
+        // Cada sala conserva el orden de recepción aunque Firestore tarde en confirmar.
+        const write = (pendingChat.get(channel) ?? Promise.resolve()).then(async () => {
+          if (!socket.rooms.has(channel)) throw new AppError('El socket salió de la sala.', 403, 'FORBIDDEN');
+          const result = await persist(input, author);
+          if (result.message) io.to(channel).emit('chat:message', result.message);
+          reply?.(createSocketSuccess({ id: result.id }));
+        });
+        const next = write.catch(() => {});
+        pendingChat.set(channel, next);
+        try {
+          await write;
+        } finally {
+          if (pendingChat.get(channel) === next) pendingChat.delete(channel);
+        }
+      } catch (error) {
+        reply?.(error instanceof AppError
+          ? createSocketError(error.code, error.message, error.fields)
+          : createSocketError('DATABASE_ERROR', 'No se pudo guardar el mensaje. Reintenta.'));
+      }
+    });
     socket.on('disconnecting', () => {
       for (const channel of socket.rooms) {
         if (channel.startsWith('room:')) announceDeparture(channel);
