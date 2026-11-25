@@ -2,6 +2,7 @@ import { AddressInfo } from 'net';
 import { io as ioClient, Socket as ClientSocket, ManagerOptions, SocketOptions } from 'socket.io-client';
 import { createRealtimeServer, RealtimeServer } from '../src/realtime';
 import { TokenVerifier } from '../src/services/token.verifier';
+import { WatchRoom } from '../src/services/room.watch';
 import { AuthUser } from '../src/types/auth.types';
 import { UnauthenticatedError } from '../src/types/errors.types';
 
@@ -31,8 +32,8 @@ export interface TestServer extends RealtimeServer {
 }
 
 /** Levanta el servidor real (Express + Socket.IO) en un puerto libre. */
-export async function startTestServer(verifier: TokenVerifier = new FakeTokenVerifier()): Promise<TestServer> {
-  const server = createRealtimeServer({ tokenVerifier: verifier });
+export async function startTestServer(verifier: TokenVerifier = new FakeTokenVerifier(), watchRoom: WatchRoom = () => () => {}): Promise<TestServer> {
+  const server = createRealtimeServer({ tokenVerifier: verifier, watchRoom });
   await new Promise<void>((resolve) => server.httpServer.listen(0, '127.0.0.1', resolve));
   const { port } = server.httpServer.address() as AddressInfo;
 
