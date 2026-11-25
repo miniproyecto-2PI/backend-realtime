@@ -86,7 +86,7 @@ socket.emit('ping', (res) => console.log(res.data.serverTime));
 | Datos | `roomId: string` (no vacío) |
 | Ack éxito | `{ ok: true, data: { roomId, joined: true } }` |
 | Ack error | `{ ok: false, error: { code: 'VALIDATION_ERROR', message: 'El identificador de sala es obligatorio.', fields: { roomId: '…' } } }` |
-| Estado | **Base del Sprint 1.** En el Sprint 2 (TS-02) se agrega la validación de que la sala existe en Firestore (`ROOM_NOT_FOUND`) y los eventos de presencia |
+| Estado | El ack confirma la suscripción al canal. Si el documento ya no existe, el cliente recibe `room:deleted`. |
 
 ```ts
 socket.emit('join-room', 'ABCD234567', (res) => {
@@ -110,7 +110,18 @@ Nombres propuestos por el backlog. Se confirman aquí cuando se programan.
 | Evento | Sprint | Historia |
 |---|---|---|
 | `room:participants`, `room:user-joined`, `room:user-left` | 3 | TS-09, US-08 |
-| `room:deleted` | 3 | US-07 |
 | Envío y recepción de mensajes de chat | 3 | US-10, US-11 |
 | Señalización WebRTC (oferta/respuesta SDP, candidatos ICE) | 4 | TS-03, US-12 |
 | Estados de media (micrófono, cámara, pantalla) | 5 | US-13, US-14 |
+
+## US-07 · Cambios de una sala
+
+Ambos servicios deben apuntar al mismo proyecto Firebase. Realtime observa el documento
+`rooms/{roomId}` mientras el canal tiene clientes. Los eventos los emite el servidor
+a los sockets autenticados que usaron `join-room` para esa sala.
+
+| Evento | Datos | Acción del cliente |
+|---|---|---|
+| `room:updated` | `{ roomId, name }` | Mostrar el nombre persistido. Se envía al abrir el observador y cuando cambia el nombre. |
+| `room:deleted` | `{ roomId }` | Mostrar «El anfitrión eliminó la sala» y volver al dashboard. El servidor retira a los clientes del canal después de emitir. |
+| `room:error` | `{ roomId, code: 'DATABASE_ERROR' }` | Mostrar un error y permitir reintentar con `join-room` después de cerrar el observador. |

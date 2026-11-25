@@ -54,7 +54,7 @@ function buildAppOptions(): AppOptions | null {
     return { credential: applicationDefault(), projectId: FIREBASE.projectId };
   }
 
-  if (FIREBASE.authEmulatorHost) {
+  if (FIREBASE.authEmulatorHost || process.env.FIRESTORE_EMULATOR_HOST) {
     return { projectId: FIREBASE.projectId || 'demo-estudiemos' };
   }
 

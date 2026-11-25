@@ -33,12 +33,40 @@ describe('Eventos Socket.IO', () => {
     expect(await pong).toMatchObject({ ok: true });
   });
 
+  it('notifica la edición y la eliminación a los participantes y libera el canal', async () => {
+    let changed!: (name: string | null) => void;
+    let stopped = false;
+    const instance = await startTestServer(undefined, (_id, onChange) => {
+      changed = onChange;
+      return () => { stopped = true; };
+    });
+    const clients = [1, 2].map(() => connectClient(instance.url, { auth: { token: VALID_TOKEN } }));
+    try {
+      await Promise.all(clients.map(waitForConnection));
+      await Promise.all(clients.map(c => c.timeout(2000).emitWithAck('join-room', 'ABCDEFGH')));
+      changed('Inicial');
+      const updates = clients.map(c => new Promise(resolve => {
+        c.on('room:updated', data => { if (data.name === 'Nuevo') resolve(data); });
+      }));
+      changed('Nuevo');
+      for (const update of updates) expect(await update).toEqual({ roomId: 'ABCDEFGH', name: 'Nuevo' });
+      const deletions = clients.map(c => new Promise(resolve => c.once('room:deleted', resolve)));
+      changed(null);
+      for (const deletion of deletions) expect(await deletion).toEqual({ roomId: 'ABCDEFGH' });
+      expect(await instance.io.in('room:ABCDEFGH').fetchSockets()).toHaveLength(0);
+      expect(stopped).toBe(true);
+    } finally {
+      clients.forEach(c => c.disconnect());
+      await instance.close();
+    }
+  });
+
   it('join-room une el socket a la sala', async () => {
     const res = await client.timeout(2000).emitWithAck('join-room', '  ABCD234567 ');
     expect(res).toEqual({ ok: true, data: { roomId: 'ABCD234567', joined: true } });
 
     const [serverSocket] = await server.io.fetchSockets();
-    expect(serverSocket.rooms.has('ABCD234567')).toBe(true);
+    expect(serverSocket.rooms.has('room:ABCD234567')).toBe(true);
   });
 
   it.each([[''], ['   '], [123], [null]])('join-room rechaza un roomId inválido (%j) con VALIDATION_ERROR', async (roomId) => {
